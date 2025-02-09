@@ -1,10 +1,15 @@
 import sys
+import logging
 from PyQt5.QtWidgets import (
     QApplication, QWidget, QVBoxLayout, QLineEdit,
     QPushButton, QLabel, QListWidget, QComboBox
 )
-from PyQt5.QtGui import QFont, QColor
+from PyQt5.QtGui import QFont
 from PyQt5.QtCore import Qt
+
+
+# Настройка логирования
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
 
 class Database:
@@ -29,12 +34,19 @@ class Database:
         return results
 
     def sort_results(self, results, sort_key):
+        if not results:
+            logging.warning("Попытка сортировать пустой список результатов.")
+            return []
         key_mapping = {
             "Имя": "name",
             "Возраст": "age",
             "Город": "city"
         }
-        return sorted(results, key=lambda x: x[key_mapping[sort_key]])
+        sort_key_mapping = key_mapping.get(sort_key)
+        if sort_key_mapping is None:
+            logging.error(f"Несуществующий ключ сортировки: {sort_key}")
+            return results
+        return sorted(results, key=lambda x: x[sort_key_mapping])
 
 
 class SearchApp(QWidget):
@@ -113,6 +125,7 @@ class SearchApp(QWidget):
 
         # Выполнение фильтрации
         self.filtered_results = self.db.search(name=name, age=age, city=city)
+        logging.info(f"Результаты фильтрации: {self.filtered_results}")
 
         # Обновление результата
         self.update_results_list()
@@ -128,7 +141,8 @@ class SearchApp(QWidget):
 
     def perform_sort(self):
         sort_key = self.sort_combo.currentText()
-        sorted_results = self.db.sort_results(self.filtered_results, sort_key) if self.filtered_results else []
+        sorted_results = self.db.sort_results(self.filtered_results, sort_key)
+        logging.info(f"Результаты сортировки по ключу '{sort_key}': {sorted_results}")
 
         # Обновление результата
         self.update_results_list(sorted_results)
@@ -146,6 +160,7 @@ class SearchApp(QWidget):
                 self.results_list.addItem(result_text)
         else:
             self.results_list.addItem("Записи не найдены.")
+            logging.info("Записи не найдены.")
 
 
 if __name__ == "__main__":
