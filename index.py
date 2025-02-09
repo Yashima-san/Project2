@@ -1,15 +1,35 @@
 import sys
 import logging
+import time
+from PyQt5.QtGui import QFont
 from PyQt5.QtWidgets import (
     QApplication, QWidget, QVBoxLayout, QLineEdit,
-    QPushButton, QLabel, QListWidget, QComboBox
-)
-from PyQt5.QtGui import QFont
-from PyQt5.QtCore import Qt
-
+    QPushButton, QListWidget, QComboBox)
 
 # Настройка логирования
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+
+
+class Logger:
+    def __init__(self, name):
+        self.name = name
+        self.logger = logging.getLogger(name)
+        self.logger.setLevel(logging.INFO)
+
+    def log(self, message, level=logging.INFO):
+        self.logger.log(level, message)
+
+    @staticmethod
+    def log_execution_time(func):
+        def wrapper(*args, **kwargs):
+            start_time = time.time()
+            result = func(*args, **kwargs)
+            end_time = time.time()
+            execution_time = (end_time - start_time) * 1000  # Время в миллисекундах
+            # Логируем время выполнения функции
+            logging.info(f"Функция '{func.__name__}' выполнялась {execution_time:.2f} мс")
+            return result
+        return wrapper
 
 
 class Database:
@@ -53,6 +73,7 @@ class SearchApp(QWidget):
     def __init__(self):
         super().__init__()
         self.db = Database()
+        self.logger = Logger("SearchApp")
         self.init_ui()
 
     def init_ui(self):
@@ -116,6 +137,7 @@ class SearchApp(QWidget):
 
         self.filtered_results = []  # хранит результаты фильтрации
 
+    @Logger.log_execution_time  # Теперь метод работает корректно
     def perform_filter(self):
         name = self.name_input.text().strip() or None
         age_input = self.age_input.text().strip()
@@ -125,7 +147,7 @@ class SearchApp(QWidget):
 
         # Выполнение фильтрации
         self.filtered_results = self.db.search(name=name, age=age, city=city)
-        logging.info(f"Результаты фильтрации: {self.filtered_results}")
+        self.logger.log(f"Результаты фильтрации: {self.filtered_results}")
 
         # Обновление результата
         self.update_results_list()
@@ -139,10 +161,11 @@ class SearchApp(QWidget):
         # Используем perform_filter для поиска
         self.perform_filter()
 
+    @Logger.log_execution_time  # Теперь метод работает корректно
     def perform_sort(self):
         sort_key = self.sort_combo.currentText()
         sorted_results = self.db.sort_results(self.filtered_results, sort_key)
-        logging.info(f"Результаты сортировки по ключу '{sort_key}': {sorted_results}")
+        self.logger.log(f"Результаты сортировки по ключу '{sort_key}': {sorted_results}")
 
         # Обновление результата
         self.update_results_list(sorted_results)
@@ -160,8 +183,7 @@ class SearchApp(QWidget):
                 self.results_list.addItem(result_text)
         else:
             self.results_list.addItem("Записи не найдены.")
-            logging.info("Записи не найдены.")
-
+            self.logger.log("Записи не найдены.")
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)
